@@ -13,6 +13,22 @@ If the client directly connects to the server, you can get away by using a small
 However, if you have a proxy that respect ttl (which is most of them), you'll need to increase the number of sequences that are available.
 the TTL of the ``sequence`` endpoint is fixed to 10sec, and the TLL of the sequences domains is automatically calculated to be around 80% of the total time of audio data saved in all sequences
 
+## Usage
+
+This is for local settings only.
+
+First run the server:
+```
+# python -m aodns.server music.example.com --dns-port 5053
+```
+The default is 75 sequence number, so you might run into some underflow if you start the client right away, I suggest wait 10-20 seconds.
+
+Then run the client:
+```
+# python -m aodns.client --dns-port 5053 music.example.com 127.0.0.1
+```
+
+
 ## How does it work
 ### Server
 #### Capture
