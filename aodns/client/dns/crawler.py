@@ -1,5 +1,5 @@
 from .resolver import AoDnsResolver
-from ...common.sequence_controller import SequenceReconstructor
+from ...common.sequence_controller import SequenceReconstructor, PastSequenceException
 
 
 class AoDnsCrawler:
@@ -10,12 +10,17 @@ class AoDnsCrawler:
     def crawl(self):
         sequences = self._resolver.get_available_sequences()
         for sequence in sequences:
-            if sequence not in self._reconstructor:
+            if sequence < self._reconstructor.last_seq_number:
+                # Sequence was already played, no need to even try to add it
+                self._reconstructor.add_dummy(sequence)
+            if not self._reconstructor.__contains__(sequence):
                 pack = self._resolver.get_sequence(sequence)
                 if pack:
-                    self._reconstructor.add_sequence(sequence, pack)
+                    try:
+                        self._reconstructor.add_sequence(sequence, pack, raise_on_past=True)
+                    except PastSequenceException:
+                        # Just to make sure we don't re-query it, add it as a sequence that was already read
+                        self._reconstructor.add_dummy(sequence)
 
         # Make sure that the reconstructor doesn't have a sequence that it should have
-        for reconstructor_sequence in self._reconstructor.nodata_sequences:
-            if reconstructor_sequence not in sequences:
-                self._reconstructor.remove_sequence(reconstructor_sequence)
+        self._reconstructor.cleanup_read(sequences)

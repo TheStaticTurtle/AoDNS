@@ -1,8 +1,15 @@
 import logging
 import time
 import typing
-
 from .data_packing import PackedData
+from .exception import AoDNSException
+
+class SequenceException(AoDNSException):
+    pass
+class PastSequenceException(SequenceException):
+    pass
+class FutureSequenceException(SequenceException):
+    pass
 
 class SequenceBase:
     def __init__(self):
@@ -28,9 +35,10 @@ class SequenceBase:
         return sum([len(pack) for seq, pack in self.array if pack is not None])
 
     def __contains__(self, item):
-        if not isinstance(item, int):
-            raise ValueError(f"{item.__class__} comparison not supported")
-        return any([seq == item for seq, pack in self.array])
+        for seq, pack in self.array:
+            if seq == item or pack == item:
+                return True
+        return False
 
     @property
     def max(self):
@@ -59,20 +67,39 @@ class SequenceReconstructor(SequenceBase):
     def __init__(self):
         super().__init__()
         self._logger = logging.getLogger(f"common/sequence-reconstructor")
+        self.last_seq_number = -1
 
-    def add_sequence(self, number: int, pack: PackedData):
+    def add_dummy(self, number: int):
+        self.array.append((number, None))
+        self._logger.debug(f"Added dummy sequence number {number}")
+
+    def add_sequence(self, number: int, pack: PackedData, raise_on_past=False):
+        if number < self.last_seq_number:
+            if raise_on_past:
+                self._logger.error(f"Tried to insert sequence {number} which is lower than the last sequence number read {self.last_seq_number}")
+                raise PastSequenceException(f"Last sequence number read was {self.last_seq_number} tried to insert sequence {number}")
+            self._logger.warning(f"Insert sequence {number} which is lower than the last sequence number read {self.last_seq_number}")
+
         self.array.append((number, pack))
         self._logger.info(f"Received new sequence number {number} currently storing {len(self)} bytes in {len(self.array)} blocks ({self.sequences})")
 
     def remove_sequence(self, number: int):
         try:
-            seq_pack = next(filter(lambda x: x[0] != number, self.array))
-            self.array.remove(seq_pack)
+            if number in self.nodata_sequences:
+                self.array = list(filter(lambda x: x[0] != number, self.array))
+                self._logger.info(f"Removing old read sequence {number}")
         except StopIteration:
             pass
 
+    def cleanup_read(self, ignore_these: list[int]):
+        tmp_copy = [seq for seq in self.nodata_sequences if seq not in ignore_these]
+        if len(tmp_copy) > 0:
+            self.array = list(filter(lambda x: x[0] not in tmp_copy, self.array))
+            self._logger.info(f"Removed old read sequences: {tmp_copy}")
+
 
     def get_first(self, blocking=False) -> typing.Optional[typing.Tuple[int, PackedData]]:
+
         while True:
             try:
                 first_seq_number = self.min
@@ -80,6 +107,12 @@ class SequenceReconstructor(SequenceBase):
                 if not blocking:
                     return None
                 continue
+            if self.last_seq_number != -1 and (self.last_seq_number + 1) < first_seq_number:
+                self._logger.warning(f"Skipping sequences, expected sequence {self.last_seq_number + 1}, got {first_seq_number}")
+            if self.last_seq_number != -1 and (self.last_seq_number + 1) > first_seq_number:
+                self._logger.warning(f"Reading past sequences, expected sequence {self.last_seq_number + 1}, got {first_seq_number}")
+            self.last_seq_number = first_seq_number
+
             seq_pack = next(filter(lambda x: x[0] == first_seq_number, self.array))
             self.array[self.array.index(seq_pack)] = (seq_pack[0], None)
             return seq_pack

@@ -1,7 +1,6 @@
 import time
 import typing
 import zlib
-
 import base91
 import dns.resolver
 import dns.nameserver
@@ -9,6 +8,8 @@ import logging
 
 from ...common.data_packing import PackedData
 from ...common.dns import DomainName
+from ...common.function_cache import TimedCache
+
 
 class AoDnsResolver:
     def __init__(self, root: DomainName, resolver_addr, resolver_port=53):
@@ -32,31 +33,38 @@ class AoDnsResolver:
             ]
         except dns.resolver.LifetimeTimeout:
             if retry >= 10:
-                self._logger.warning(f"Timeout while querying TXT/{domain} (retry={retry})")
-                return []
+                # self._logger.warning(f"Timeout while querying TXT/{domain} (retry={retry})")
+                raise dns.resolver.NoAnswer(f"Timeout while querying TXT/{domain} exceeded retries")
             else:
-                time.sleep(.1)
+                time.sleep(.25)
                 return self._txt(domain, retry=retry+1)
         except dns.resolver.NoNameservers as e:
             self._logger.error(f"Error while querying TXT/{domain}: {e}")
 
+    @TimedCache(period=4)
     def get_available_sequences(self) -> typing.List[int]:
-        try:
-            txts = self._txt(self._root.__getattr__("sequence"))
+        txts = []
+        while len(txts) == 0:
+            try:
+                txts = self._txt(self._root.__getattr__("sequence"))
+            except dns.resolver.NoAnswer:
+                pass
             if len(txts) == 0:
-                return []
-        except dns.resolver.NoAnswer as e:
-            self._logger.warning(f"Tried to query sequences but server responded with no answer")
-            return []
+                self._logger.warning(f"Tried to query sequences but server responded with no answer")
+
         sequences_decoded = bytes(base91.decode(txts[0].decode("utf-8")))
         sequences_decompressed = zlib.decompress(sequences_decoded)
         seqs = [int(number) for number in sequences_decompressed.split(b",")]
-        self._logger.debug(f"Available sequences on server: {seqs}")
+        self._logger.info(f"Available sequences on server: {seqs}")
         return seqs
 
     def get_sequence(self, number) -> typing.Optional[PackedData]:
         try:
             txts = self._txt(self._root.__getattr__(f"seq_{number}"))
+            if txts is None:
+                self._logger.warning(f"Tried to query sequence {number}, but server responded with no answers")
+                return txts
+
             pack = PackedData()
             for txt in txts:
                 index_bytes, frame = txt.split(pack.index_separator)
