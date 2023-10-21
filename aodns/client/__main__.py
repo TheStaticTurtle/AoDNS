@@ -10,7 +10,7 @@ from .dns import AoDnsResolver, AoDnsCrawler
 from .sequence_reader import SequenceReader
 
 coloredlogs.install(stream=sys.stdout, level=logging.INFO)
-# logging.getLogger("common/data-packer").setLevel(logging.WARNING)
+logging.getLogger("dns/aodns-resolver").setLevel(logging.WARNING)
 logging.getLogger("common/audio-streamer/pyaudio/read").setLevel(logging.WARNING)
 logging.getLogger("common/audio-streamer/pyaudio/write").setLevel(logging.WARNING)
 logging.getLogger("common/codec/opus/encode").setLevel(logging.WARNING)
@@ -25,7 +25,7 @@ if __name__ == "__main__":
     crawler = AoDnsCrawler(resolver, reconstructor)
 
     codec = codecs.OpusCodec()
-    streamer = audio_streamers.PyAudioAudioStreamer(codec.frame_size * 2, en_output=True)
+    streamer = audio_streamers.PyAudioAudioStreamer(codec.frame_size, en_output=True)
     asciializer = frame_asciializer.Base91FrameAsciializer()
 
     reader = SequenceReader(

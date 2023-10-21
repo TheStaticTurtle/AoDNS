@@ -16,6 +16,6 @@ class AoDnsCrawler:
                     self._reconstructor.add_sequence(sequence, pack)
 
         # Make sure that the reconstructor doesn't have a sequence that it should have
-        for reconstructor_sequence in self._reconstructor.all_sequences:
+        for reconstructor_sequence in self._reconstructor.nodata_sequences:
             if reconstructor_sequence not in sequences:
                 self._reconstructor.remove_sequence(reconstructor_sequence)

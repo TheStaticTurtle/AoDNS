@@ -31,8 +31,8 @@ class AoDnsResolver:
                 for txt in response.answer[0].items.keys()
             ]
         except dns.resolver.LifetimeTimeout:
-            self._logger.warning(f"Timeout while querying TXT/{domain} (retry={retry})")
-            if retry >= 5:
+            if retry >= 10:
+                self._logger.warning(f"Timeout while querying TXT/{domain} (retry={retry})")
                 return []
             else:
                 time.sleep(.1)

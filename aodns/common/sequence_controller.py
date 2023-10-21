@@ -18,7 +18,7 @@ class SequenceBase:
 
     @property
     def all_sequences(self) -> list[int]:
-        return [seq for (seq, pack) in self.array if pack]
+        return [seq for (seq, pack) in self.array]
 
     @property
     def dict(self) -> dict[int, PackedData]:
@@ -65,8 +65,12 @@ class SequenceReconstructor(SequenceBase):
         self._logger.info(f"Received new sequence number {number} currently storing {len(self)} bytes in {len(self.array)} blocks ({self.sequences})")
 
     def remove_sequence(self, number: int):
-        seq_pack = next(filter(lambda x: x[0] == number, self.array))
-        del self.array[self.array.index(seq_pack)]
+        try:
+            seq_pack = next(filter(lambda x: x[0] != number, self.array))
+            self.array.remove(seq_pack)
+        except StopIteration:
+            pass
+
 
     def get_first(self, blocking=False) -> typing.Optional[typing.Tuple[int, PackedData]]:
         while True:
