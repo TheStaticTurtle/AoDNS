@@ -1,0 +1,3 @@
+
+class AoDNSException(Exception):
+    pass

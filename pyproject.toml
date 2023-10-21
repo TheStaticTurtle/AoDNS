@@ -1,0 +1,25 @@
+[tool.poetry]
+name = "aodns"
+version = "1.0.0"
+description = "Implementation of Audio over DNS via TXT queries"
+authors = ["Samuel <samuel@thestaticturtle.fr>"]
+license = "MIT"
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.11"
+base91 = "1.0.1"
+coloredlogs = "15.0.1"
+dnslib = "0.9.23"
+dnspython = "2.4.2"
+numpy = "*"
+opuslib = "3.0.1"
+pyaudio = "0.2.13"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[virtualenvs]
+path = "venv"
