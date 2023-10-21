@@ -1,5 +1,8 @@
 import time
 import typing
+import zlib
+
+import base91
 import dns.resolver
 import dns.nameserver
 import logging
@@ -43,7 +46,9 @@ class AoDnsResolver:
         except dns.resolver.NoAnswer as e:
             self._logger.warning(f"Tried to query sequences but server responded with no answer")
             return []
-        seqs = [int(number) for number in txts[0].split(b",")]
+        sequences_decoded = bytes(base91.decode(txts[0].decode("utf-8")))
+        sequences_decompressed = zlib.decompress(sequences_decoded)
+        seqs = [int(number) for number in sequences_decompressed.split(b",")]
         self._logger.debug(f"Available sequences on server: {seqs}")
         return seqs
 

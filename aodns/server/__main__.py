@@ -19,7 +19,7 @@ if __name__ == "__main__":
     streamer = audio_streamers.PyAudioAudioStreamer(codec.frame_size, en_input=True)
     asciializer = frame_asciializer.Base91FrameAsciializer()
     packer = data_packing.DataPacker(250, 2000)
-    sequencer = sequence_controller.SequenceGenerator(50)
+    sequencer = sequence_controller.SequenceGenerator(75)
 
     dns_zone = Zone("music.internal.tugler.fr")
     dns_handler = DNSRequestHandler(dns_zone)
