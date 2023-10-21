@@ -3,7 +3,6 @@ import struct
 import pycodec2
 import numpy as np
 from .base import BaseCodec
-from .. import const
 
 
 class Codec2Codec(BaseCodec):
@@ -11,8 +10,8 @@ class Codec2Codec(BaseCodec):
 
     def __init__(self):
         super().__init__()
-        assert const.AUDIO_SAMPLE_RATE == 8000
-        assert const.AUDIO_CHANNELS == 1
+        assert self._sample_rate == 8000
+        assert self._channels == 1
 
         self.c2 = pycodec2.Codec2(1200)
     

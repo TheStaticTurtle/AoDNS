@@ -1,5 +1,4 @@
 from .base import BaseAudioStreamer, AudioStreamerException
-from .. import const
 
 import pyaudio
 
@@ -11,30 +10,29 @@ class DirectionDisabledException(PyAudioStreamerException):
 
 
 class PyAudioAudioStreamer(BaseAudioStreamer):
-    def __init__(self, frame_size, en_input=False, en_output=False):
-        super().__init__(frame_size)
+    def __init__(self, frame_size, sample_rate, channels, en_input=False, en_output=False):
+        super().__init__(frame_size, sample_rate, channels)
 
-        self._frame_size = frame_size
         self._en_input = en_input
         self._en_output = en_output
 
         self.p = pyaudio.PyAudio()
         self.stream = self.p.open(
             format=pyaudio.paInt16,
-            channels=1,
-            rate=const.AUDIO_SAMPLE_RATE,
+            channels=channels,
+            rate=sample_rate,
             input=en_input,
             output=en_output,
             input_device_index=self.p.get_default_input_device_info()["index"] if en_input else None,
             output_device_index=self.p.get_default_output_device_info()["index"] if en_output else None,
-            frames_per_buffer=self.frame_size
+            frames_per_buffer=frame_size
         )
 
     def read(self) -> bytes:
         if not self._en_input:
             raise DirectionDisabledException("Input is not enabled on this streamer")
 
-        data = self.stream.read(self.frame_size)
+        data = self.stream.read(self._frame_size)
         self._logger_read.info(f"Read {len(data)} bytes from source")
         return data
 
