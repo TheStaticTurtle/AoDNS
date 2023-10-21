@@ -37,6 +37,8 @@ class AoDnsResolver:
             else:
                 time.sleep(.1)
                 return self._txt(domain, retry=retry+1)
+        except dns.resolver.NoNameservers as e:
+            self._logger.error(f"Error while querying TXT/{domain}: {e}")
 
     def get_available_sequences(self) -> typing.List[int]:
         try:
