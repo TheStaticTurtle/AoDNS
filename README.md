@@ -128,15 +128,47 @@ ttl = int(seq_duration * sequencer.max_concurrent_numbers * 0.8)
 Which for the default settings and 75 sequence domains is around 23sec
 
 
-
 ### Client
-#### Reading the sequence list
-#### Reading sequences data
-#### Sequence reconstruction
-#### Sequence reading
-#### Sequence reconstructor cleaning
-#### Data un-packing and re-ordering
-#### Decoding (de-asciializing)
-#### Decompression (codec)
-#### Playback
+#### DNS Resolution
+A custom dns resolver is used to run TXT lookup on domains. 
+The resolver can connect to any DNS server (with any port) but it must respond in < 100ms if not, the client will retry up to 10 times at 250ms interval
 
+##### Reading the sequence list
+Getting the sequence list is done by resolving the `sequence` domain, decoding the base91 and de-compressing the zlib data.
+Once done its convert back to list of ints
+
+The `get_available_sequences` function has a timed cache set to 4 seconds to avoid spamming the DNS server (TTL is 10sec anyway)
+The function also bypasses the retry counter and will run indefinitely until it gets an answer
+
+##### Reading sequences data
+
+Reading a sequence is done by:
+ - Getting all the strings in the TXT field
+ - Preparing a `PackedData` instance
+ - Using the `PackedData.insert_indexed` function to insert the base91 frame at the specified index
+
+No additional checks are in place to check the continuity of the frame (eg detecting that 3 is missing in 1, 2, 4)
+
+#### Sequence reconstruction
+
+The sequence reconstructor takes PackedData and it's sequence number and stores it in an internal buffer.
+Once read, the sequence data is set to `None` indicating that it has been read and can be cleaned
+
+Cleaning the sequence reconstructions remove all sequences which have no data.
+
+A special check is in place to make sure not to delete sequences that are still available on the resolver.
+This avoids re-querying sequences that have already been read which would cause skipping
+
+If by chance a sequence number lower than the one last but one that is not present in the internal buffer is received, it gets added via the `add_dummy` function which add the sequence number to the buffer without any data attached.
+
+#### Sequence reading
+
+The `SequenceReconstructor` implements an iterator which will get the lowest sequence number possible in the buffer, mark it as read and return it.
+If the internal buffer is empty, it will block until one is available
+
+The `SequenceReader` takes  the instance of the reconstructor, alongside the asciializer, the codec and the streamer.
+
+Then it iterates over the reconstruct, de-asciialize it, de-compress it and streams it to the output device
+
+Note that the client doesn't know about the configuration of the server. Something that could easily be improved by adding a config record.
+This does mean that if the settings are wrong, it might lead to corrupted data on the output.
